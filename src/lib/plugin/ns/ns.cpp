@@ -20,17 +20,34 @@
 #include "SecureSocket.h"
 #include "SecureListenSocket.h"
 #include "arch/Arch.h"
+#include "common/PluginVersion.h"
 #include "base/Log.h"
 
 #include <iostream>
+#include <sstream>
+#include <vector>
+#include <iterator>
 
 SecureSocket* g_secureSocket = NULL;
 SecureListenSocket* g_secureListenSocket = NULL;
 Arch* g_arch = NULL;
 Log* g_log = NULL;
 
-extern "C" {
+std::string
+helperGetLibsUsed(void)
+{
+	std::stringstream libs(ARCH->getLibsUsed());
+	std::string msg;
+	std::string pid;
+	std::getline(libs,pid);
 
+	while( std::getline(libs,msg) ) {
+		LOG(( CLOG_DEBUG "libs:%s",msg.c_str()));
+	}
+	return pid;
+}
+
+extern "C" {
 void
 init(void* log, void* arch)
 {
@@ -41,6 +58,8 @@ init(void* log, void* arch)
 	if (g_arch == NULL) {
 		Arch::setInstance(reinterpret_cast<Arch*>(arch));
 	}
+
+	LOG(( CLOG_DEBUG "library use: %s", helperGetLibsUsed().c_str()));
 }
 
 int
@@ -85,6 +104,9 @@ invoke(const char* command, void** args)
 			delete g_secureListenSocket;
 			g_secureListenSocket = NULL;
 		}
+	}
+	else if (strcmp(command, "version") == 0) {
+		return (void*)getExpectedPluginVersion(s_pluginNames[kSecureSocket]);
 	}
 
 	return NULL;

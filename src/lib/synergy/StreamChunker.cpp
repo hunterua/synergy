@@ -17,6 +17,8 @@
 
 #include "synergy/StreamChunker.h"
 
+#include "mt/Lock.h"
+#include "mt/Mutex.h"
 #include "synergy/FileChunk.h"
 #include "synergy/ClipboardChunk.h"
 #include "synergy/protocol_types.h"
@@ -31,7 +33,7 @@
 
 #include <fstream>
 
-#define PAUSE_TIME_HACK 0.1
+#define SEND_THRESHOLD 0.005f
 
 using namespace std;
 
@@ -43,7 +45,7 @@ bool StreamChunker::s_isChunkingClipboard = false;
 bool StreamChunker::s_interruptClipboard = false;
 bool StreamChunker::s_isChunkingFile = false;
 bool StreamChunker::s_interruptFile = false;
-
+Mutex* StreamChunker::s_interruptMutex = NULL;
 
 void
 StreamChunker::sendFile(
@@ -67,21 +69,25 @@ StreamChunker::sendFile(
 	String fileSize = synergy::string::sizeTypeToString(size);
 	FileChunk* sizeMessage = FileChunk::start(fileSize);
 
-	events->addEvent(Event(events->forIScreen().fileChunkSending(), eventTarget, sizeMessage));
+	events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, sizeMessage));
 
 	// send chunk messages with a fixed chunk size
 	size_t sentLength = 0;
 	size_t chunkSize = s_chunkSize;
-	Stopwatch stopwatch;
-	stopwatch.start();
+	Stopwatch sendStopwatch;
+	sendStopwatch.start();
 	file.seekg (0, std::ios::beg);
+
 	while (true) {
 		if (s_interruptFile) {
 			s_interruptFile = false;
+			LOG((CLOG_DEBUG "file transmission interrupted"));
 			break;
 		}
 		
-		if (stopwatch.getTime() > PAUSE_TIME_HACK) {
+		if (sendStopwatch.getTime() > SEND_THRESHOLD) {
+			events->addEvent(Event(events->forFile().keepAlive(), eventTarget));
+
 			// make sure we don't read too much from the mock data.
 			if (sentLength + chunkSize > size) {
 				chunkSize = size - sentLength;
@@ -93,7 +99,7 @@ StreamChunker::sendFile(
 			FileChunk* fileChunk = FileChunk::data(data, chunkSize);
 			delete[] chunkData;
 
-			events->addEvent(Event(events->forIScreen().fileChunkSending(), eventTarget, fileChunk));
+			events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, fileChunk));
 
 			sentLength += chunkSize;
 			file.seekg (sentLength, std::ios::beg);
@@ -102,14 +108,14 @@ StreamChunker::sendFile(
 				break;
 			}
 
-			stopwatch.reset();
+			sendStopwatch.reset();
 		}
 	}
 
 	// send last message
 	FileChunk* end = FileChunk::end();
 
-	events->addEvent(Event(events->forIScreen().fileChunkSending(), eventTarget, end));
+	events->addEvent(Event(events->forFile().fileChunkSending(), eventTarget, end));
 
 	file.close();
 	
@@ -136,16 +142,24 @@ StreamChunker::sendClipboard(
 	// send clipboard chunk with a fixed size
 	size_t sentLength = 0;
 	size_t chunkSize = s_chunkSize;
-	Stopwatch stopwatch;
-	stopwatch.start();
+	Stopwatch sendStopwatch;
+	sendStopwatch.start();
 	
 	while (true) {
-		if (s_interruptClipboard) {
-			s_interruptClipboard = false;
-			break;
+		{
+			if (s_interruptMutex == NULL) {
+				s_interruptMutex = new Mutex();
+			}
+			Lock lock(s_interruptMutex);
+			if (s_interruptClipboard) {
+				LOG((CLOG_DEBUG "clipboard transmission interrupted"));
+				break;
+			}
 		}
-		
-		if (stopwatch.getTime() > 0.1f) {
+
+		if (sendStopwatch.getTime() > SEND_THRESHOLD) {
+			events->addEvent(Event(events->forFile().keepAlive(), eventTarget));
+
 			// make sure we don't read too much from the mock data.
 			if (sentLength + chunkSize > size) {
 				chunkSize = size - sentLength;
@@ -157,12 +171,11 @@ StreamChunker::sendClipboard(
 			events->addEvent(Event(events->forClipboard().clipboardSending(), eventTarget, dataChunk));
 
 			sentLength += chunkSize;
-
 			if (sentLength == size) {
 				break;
 			}
 
-			stopwatch.reset();
+			sendStopwatch.reset();
 		}
 	}
 
@@ -171,6 +184,8 @@ StreamChunker::sendClipboard(
 
 	events->addEvent(Event(events->forClipboard().clipboardSending(), eventTarget, end));
 	
+	LOG((CLOG_DEBUG "sent clipboard size=%d", sentLength));
+
 	s_isChunkingClipboard = false;
 }
 
@@ -195,10 +210,24 @@ StreamChunker::interruptFile()
 }
 
 void
-StreamChunker::interruptClipboard()
+StreamChunker::setClipboardInterrupt(bool interrupt)
 {
-	if (s_isChunkingClipboard) {
-		s_interruptClipboard = true;
-		LOG((CLOG_INFO "previous clipboard data has become invalid"));
+	if (s_interruptMutex == NULL) {
+		s_interruptMutex = new Mutex();
+	}
+	Lock lock(s_interruptMutex);
+
+	if (interrupt) {
+		if (s_isChunkingClipboard) {
+			s_interruptClipboard = interrupt;
+			LOG((CLOG_INFO "previous clipboard data has become invalid"));
+		}
+		else {
+			LOG((CLOG_DEBUG "no clipboard to interrupt"));
+		}
+	}
+	else {
+		s_interruptClipboard = interrupt;
+		LOG((CLOG_DEBUG "reset clipboard interrupt"));
 	}
 }

@@ -44,8 +44,6 @@ ArchSystemUnix::getOSName() const
 		msg += info.sysname;
 		msg += " ";
 		msg += info.release;
-		msg += " ";
-		msg += info.version;
 		return msg;
 	}
 #endif
@@ -73,4 +71,10 @@ ArchSystemUnix::setting(const std::string&) const
 void
 ArchSystemUnix::setting(const std::string&, const std::string&) const
 {
+}
+
+std::string
+ArchSystemUnix::getLibsUsed(void) const
+{
+	return "not implmented.\nuse lsof on shell";
 }

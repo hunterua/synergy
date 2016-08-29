@@ -20,12 +20,13 @@
 
 #include "synergy/IClient.h"
 
-#include "synergy/IClipboard.h"
+#include "synergy/Clipboard.h"
 #include "synergy/DragInformation.h"
 #include "synergy/INode.h"
 #include "synergy/ClientArgs.h"
 #include "net/NetworkAddress.h"
 #include "base/EventTypes.h"
+#include "mt/CondVar.h"
 
 class EventQueueTimer;
 namespace synergy { class Screen; }
@@ -127,6 +128,9 @@ public:
 	//! Return received file data
 	String&				getReceivedFileData() { return m_receivedFileData; }
 
+	//! Return drag file list
+	DragFileList		getDragFileList() { return m_dragFileList; }
+
 	//@}
 
 	// IScreen overrides
@@ -159,7 +163,8 @@ public:
 	virtual String		getName() const;
 
 private:
-	void				sendClipboard(ClipboardID);
+	void				fillClipboard(ClipboardID, Clipboard*);
+	void				sendClipboard(ClipboardID, Clipboard*);
 	void				sendEvent(Event::Type, void*);
 	void				sendConnectionFailedEvent(const char* msg);
 	void				sendFileChunk(const void* data);
@@ -220,4 +225,7 @@ private:
 	bool				m_useSecureNetwork;
 	ClientArgs&			m_args;
 	Thread*				m_sendClipboardThread;
+	Mutex*				m_mutex;
+	bool				m_condData;
+	CondVar<bool>*		m_condVar;
 };

@@ -21,50 +21,46 @@
 #include "AppConfig.h"
 
 #include "ui_PluginWizardPageBase.h"
+#include "PluginManager.h"
 #include <QWizardPage>
 
-class WebClient;
-class PluginManager;
 class SslCertificate;
+class MainWindow;
 
 class PluginWizardPage : public QWizardPage, public Ui::PluginWizardPage {
 
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-	PluginWizardPage(AppConfig& appConfig, QWidget *parent = 0);
-    ~PluginWizardPage();
+	PluginWizardPage(MainWindow& mainWindow, QWidget *parent = 0);
+	~PluginWizardPage();
 
 	void setFinished(bool b) { m_Finished = b; }
-	void setEmail(QString e) { m_Email = e; }
-	void setPassword(QString p) { m_Password = p; }
+	void setEdition(int edition) { m_Edition = edition; }
 
 	bool isComplete() const;
 	void initializePage();
 
 protected:
-    void changeEvent(QEvent *e);
+	void changeEvent(QEvent *e);
 
 protected slots:
 	void showError(QString error);
 	void updateStatus(QString info);
 	void queryPluginDone();
-	void updateDownloadStatus();
-	void finished();
 	void generateCertificate();
+	void finished();
 
 private:
-	void downloadPlugins();
+	void copyPlugins();
 	void showFinished();
 
 private:
 	bool m_Finished;
-	QString m_Email;
-	QString m_Password;
-	WebClient* m_pWebClient;
-	PluginManager* m_pPluginManager;
+	int m_Edition;
+	PluginManager m_PluginManager;
 	SslCertificate* m_pSslCertificate;
 	QThread* m_pThread;
-	AppConfig& m_AppConfig;
+	MainWindow& m_mainWindow;
 };
 #endif // PLUGINWIZARDPAGE_H

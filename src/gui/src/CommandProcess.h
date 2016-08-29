@@ -18,6 +18,7 @@
 #ifndef COMMANDTHREAD_H
 #define COMMANDTHREAD_H
 
+#include <QObject>
 #include <QStringList>
 
 class CommandProcess : public QObject
@@ -25,17 +26,18 @@ class CommandProcess : public QObject
 	Q_OBJECT
 
 public:
-	CommandProcess(QString cmd, QStringList arguments);
+	CommandProcess(QString cmd, QStringList arguments, QString input = "");
 
 signals:
 	void finished();
 
 public slots:
-	void run();
+	QString run();
 
 private:
 	QString m_Command;
 	QStringList m_Arguments;
+	QString m_Input;
 };
 
 #endif // COMMANDTHREAD_H

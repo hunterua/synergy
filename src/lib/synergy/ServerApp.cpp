@@ -120,7 +120,7 @@ ServerApp::help()
 #  define WINAPI_INFO
 #endif
 
-	char buffer[2000];
+	char buffer[3000];
 	sprintf(
 		buffer,
 		"Usage: %s"
@@ -317,7 +317,7 @@ ServerApp::updateStatus()
 	updateStatus("");
 }
 
-void ServerApp::updateStatus( const String& msg )
+void ServerApp::updateStatus(const String& msg)
 {
 	if (m_taskBarReceiver)
 	{

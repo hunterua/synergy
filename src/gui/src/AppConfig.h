@@ -31,10 +31,12 @@
 //   1: first version
 //   2: added language page
 //   3: added premium page and removed
-//   4: ssl plugin 'ns' introduced
-//   5: ssl plugin 'ns' updated
+//   4: ssl plugin 'ns' v1.0
+//   5: ssl plugin 'ns' v1.1
+//   6: ssl plugin 'ns' v1.2
+//   7: serial key activation
 //
-const int kWizardVersion = 5;
+const int kWizardVersion = 7;
 
 class QSettings;
 class SettingsDialog;
@@ -75,8 +77,10 @@ class AppConfig
 		int edition() { return m_Edition; }
 		void setActivateEmail(QString e) { m_ActivateEmail = e; }
 		QString activateEmail() { return m_ActivateEmail; }
-		void setUserToken(QString t) { m_UserToken = t; }
-		QString userToken() { return m_UserToken; }
+		void setSerialKey(QString serial) { m_Serialkey = serial; }
+		QString serialKey() { return m_Serialkey; }
+		int lastExpiringWarningTime() const { return m_LastExpiringWarningTime; }
+		void setLastExpiringWarningTime(int t) { m_LastExpiringWarningTime = t; }
 
 		QString synergysName() const { return m_SynergysName; }
 		QString synergycName() const { return m_SynergycName; }
@@ -92,6 +96,8 @@ class AppConfig
 		void setAutoHide(bool b) { m_AutoHide = b; }
 		bool getAutoHide() { return m_AutoHide; }
 
+		void saveSettings();
+
 	protected:
 		QSettings& settings() { return *m_pSettings; }
 		void setScreenName(const QString& s) { m_ScreenName = s; }
@@ -106,7 +112,6 @@ class AppConfig
 		void setElevateMode(bool b) { m_ElevateMode = b; }
 
 		void loadSettings();
-		void saveSettings();
 
 	private:
 		QSettings* m_pSettings;
@@ -125,9 +130,10 @@ class AppConfig
 		bool m_AutoConfigPrompted;
 		int m_Edition;
 		QString m_ActivateEmail;
-		QString m_UserToken;
 		bool m_CryptoEnabled;
 		bool m_AutoHide;
+		QString m_Serialkey;
+		int m_LastExpiringWarningTime;
 
 		static const char m_SynergysName[];
 		static const char m_SynergycName[];

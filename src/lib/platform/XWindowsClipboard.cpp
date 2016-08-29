@@ -314,7 +314,10 @@ XWindowsClipboard::add(EFormat format, const String& data)
 bool
 XWindowsClipboard::open(Time time) const
 {
-	assert(!m_open);
+	if (m_open) {
+		LOG((CLOG_DEBUG "failed to open clipboard: already opened"));
+		return false;
+	}
 
 	LOG((CLOG_DEBUG "open clipboard %d", m_id));
 
@@ -558,7 +561,7 @@ XWindowsClipboard::icccmFillCache()
 		IClipboard::EFormat format = converter->getFormat();
 		m_data[format]  = converter->toIClipboard(targetData);
 		m_added[format] = true;
-		LOG((CLOG_DEBUG "  added format %d for target %s (%u %s)", format, XWindowsUtil::atomToString(m_display, target).c_str(), targetData.size(), targetData.size() == 1 ? "byte" : "bytes"));
+		LOG((CLOG_DEBUG "added format %d for target %s (%u %s)", format, XWindowsUtil::atomToString(m_display, target).c_str(), targetData.size(), targetData.size() == 1 ? "byte" : "bytes"));
 	}
 }
 
@@ -796,7 +799,7 @@ XWindowsClipboard::motifFillCache()
 		IClipboard::EFormat format = converter->getFormat();
 		m_data[format]  = converter->toIClipboard(targetData);
 		m_added[format] = true;
-		LOG((CLOG_DEBUG "  added format %d for target %s", format, XWindowsUtil::atomToString(m_display, target).c_str()));
+		LOG((CLOG_DEBUG "added format %d for target %s", format, XWindowsUtil::atomToString(m_display, target).c_str()));
 	}
 }
 
@@ -1314,7 +1317,7 @@ XWindowsClipboard::CICCCMGetClipboard::readClipboard(Display* display,
 	// by badly behaved selection owners.
 	XEvent xevent;
 	std::vector<XEvent> events;
-	Stopwatch timeout(true);
+	Stopwatch timeout(false);	// timer not stopped, not triggered
 	static const double s_timeout = 0.25;	// FIXME -- is this too short?
 	bool noWait = false;
 	while (!m_done && !m_failed) {
@@ -1358,7 +1361,7 @@ XWindowsClipboard::CICCCMGetClipboard::readClipboard(Display* display,
 	XSelectInput(display, m_requestor, attr.your_event_mask);
 
 	// return success or failure
-	LOG((CLOG_DEBUG1 "request %s", m_failed ? "failed" : "succeeded"));
+	LOG((CLOG_DEBUG1 "request %s after %fs", m_failed ? "failed" : "succeeded", timeout.getTime()));
 	return !m_failed;
 }
 
